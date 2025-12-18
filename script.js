@@ -1,99 +1,72 @@
-function getWeather() {
-    const apiKey = 'YOUR-API-KEY';
-    const city = document.getElementById('city').value;
+const apiKey = 'YOUR-API-KEY'; 
 
-    if (!city) {
-        alert('Please enter a city');
-        return;
-    }
+const animations = {
+    '01d': 'https://lottie.host/6265691e-3603-4674-84c4-f254924c8856/8tC9Eis3wV.json',
+    '01n': 'https://lottie.host/02005481-8758-450e-9407-7484df6231e3/941RzS7n6l.json',
+    '02d': 'https://lottie.host/27f4d224-e2a2-466d-927a-899478479e3f/oN0g765Y1o.json',
+    '02n': 'https://lottie.host/57f59d64-e74c-473d-9d48-89c0966a40a8/h8C29f0M6l.json',
+    '03d': 'https://lottie.host/a6109968-3e58-4993-9d41-38374a2b2512/L0y9vN5K7k.json',
+    '09d': 'https://lottie.host/49151590-7f39-4974-8622-c3132e676f2d/I9R7m3oG2j.json',
+    '11d': 'https://lottie.host/791c107c-9b8e-4a8a-9f8e-d9c026c48398/z8N2o0D9l4.json',
+    '13d': 'https://lottie.host/80e31846-9f8a-4952-9477-8490a6e4514a/u7H2n3P5l1.json'
+};
 
-    const currentWeatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}`;
-    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}`;
+window.onload = () => {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            fetchWeatherByCoords(pos.coords.latitude, pos.coords.longitude);
+        }, () => { getWeather('London'); });
+    } else { getWeather('London'); }
+};
 
-    fetch(currentWeatherUrl)
-        .then(response => response.json())
-        .then(data => {
-            displayWeather(data);
-        })
-        .catch(error => {
-            console.error('Error fetching current weather data:', error);
-            alert('Error fetching current weather data. Please try again.');
-        });
-
-    fetch(forecastUrl)
-        .then(response => response.json())
-        .then(data => {
-            displayHourlyForecast(data.list);
-        })
-        .catch(error => {
-            console.error('Error fetching hourly forecast data:', error);
-            alert('Error fetching hourly forecast data. Please try again.');
-        });
+async function fetchWeatherByCoords(lat, lon) {
+    const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+    try {
+        const [currRes, foreRes] = await Promise.all([fetch(currentUrl), fetch(forecastUrl)]);
+        const currData = await currRes.json();
+        const foreData = await foreRes.json();
+        if (currData.cod === 200) updateUI(currData, foreData.list);
+    } catch (e) { console.error(e); }
 }
 
-function displayWeather(data) {
-    const tempDivInfo = document.getElementById('temp-div');
-    const weatherInfoDiv = document.getElementById('weather-info');
-    const weatherIcon = document.getElementById('weather-icon');
-    const hourlyForecastDiv = document.getElementById('hourly-forecast');
-
-    // Clear previous content
-    weatherInfoDiv.innerHTML = '';
-    hourlyForecastDiv.innerHTML = '';
-    tempDivInfo.innerHTML = '';
-
-    if (data.cod === '404') {
-        weatherInfoDiv.innerHTML = `<p>${data.message}</p>`;
-    } else {
-        const cityName = data.name;
-        const temperature = Math.round(data.main.temp - 273.15); // Convert to Celsius
-        const description = data.weather[0].description;
-        const iconCode = data.weather[0].icon;
-        const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@4x.png`;
-
-        const temperatureHTML = `
-            <p>${temperature}°C</p>
-        `;
-
-        const weatherHtml = `
-            <p>${cityName}</p>
-            <p>${description}</p>
-        `;
-
-        tempDivInfo.innerHTML = temperatureHTML;
-        weatherInfoDiv.innerHTML = weatherHtml;
-        weatherIcon.src = iconUrl;
-        weatherIcon.alt = description;
-
-        showImage();
-    }
+async function getWeather(inputCity) {
+    const city = inputCity || document.getElementById('city').value;
+    if (!city) return;
+    const currentUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`;
+    try {
+        const [currRes, foreRes] = await Promise.all([fetch(currentUrl), fetch(forecastUrl)]);
+        const currData = await currRes.json();
+        const foreData = await foreRes.json();
+        if (currData.cod === 200) updateUI(currData, foreData.list);
+        else alert(currData.message);
+    } catch (e) { alert("Location not found"); }
 }
 
-function displayHourlyForecast(hourlyData) {
-    const hourlyForecastDiv = document.getElementById('hourly-forecast');
+function updateUI(curr, forecast) {
+    const stage = document.querySelector('.main-stage');
+    stage.classList.remove('animate');
+    void stage.offsetWidth;
+    stage.classList.add('animate');
 
-    const next24Hours = hourlyData.slice(0, 8); // Display the next 24 hours (3-hour intervals)
+    document.getElementById('temp-div').innerText = `${Math.round(curr.main.temp)}°`;
+    document.getElementById('weather-info').innerHTML = `<h2>${curr.name}</h2><p>${curr.weather[0].description}</p>`;
+    
+    const iconCode = curr.weather[0].icon;
+    const lottieContainer = document.getElementById('lottie-container');
+    lottieContainer.innerHTML = `<dotlottie-wc src="${animations[iconCode] || animations['01d']}" background="transparent" speed="1" style="width: 350px; height: 350px;" loop autoplay></dotlottie-wc>`;
 
-    next24Hours.forEach(item => {
-        const dateTime = new Date(item.dt * 1000); // Convert timestamp to milliseconds
-        const hour = dateTime.getHours();
-        const temperature = Math.round(item.main.temp - 273.15); // Convert to Celsius
-        const iconCode = item.weather[0].icon;
-        const iconUrl = `https://openweathermap.org/img/wn/${iconCode}.png`;
-
-        const hourlyItemHtml = `
-            <div class="hourly-item">
-                <span>${hour}:00</span>
-                <img src="${iconUrl}" alt="Hourly Weather Icon">
-                <span>${temperature}°C</span>
+    const forecastDiv = document.getElementById('hourly-forecast');
+    forecastDiv.innerHTML = '';
+    forecast.slice(0, 8).forEach((item, i) => {
+        const time = new Date(item.dt * 1000).getHours();
+        forecastDiv.innerHTML += `
+            <div class="hourly-item" style="animation: fadeInUp 0.5s ease forwards ${i * 0.1}s; opacity:0;">
+                <span>${time}:00</span>
+                <img src="https://openweathermap.org/img/wn/${item.weather[0].icon}.png">
+                <span>${Math.round(item.main.temp)}°</span>
             </div>
         `;
-
-        hourlyForecastDiv.innerHTML += hourlyItemHtml;
     });
-}
-
-function showImage() {
-    const weatherIcon = document.getElementById('weather-icon');
-    weatherIcon.style.display = 'block'; // Make the image visible once it's loaded
 }
