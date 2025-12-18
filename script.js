@@ -1,4 +1,4 @@
-const apiKey = ''; 
+const apiKey = 'YOUR-API-KEY'; 
 
 const animations = {
     '01d': 'https://lottie.host/6265691e-3603-4674-84c4-f254924c8856/8tC9Eis3wV.json',
